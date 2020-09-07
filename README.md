@@ -1,11 +1,12 @@
 # flux_test
 
-## Installig flux onto the cluster
+## Installing flux onto the cluster
 Create the `flux` namespace
 ```
 kubectl create namespace flux
 ```
 
+Install the `flux` service
 ```
 export GHUSER="YOURUSER"
 fluxctl install \
@@ -15,3 +16,10 @@ fluxctl install \
 --git-path=namespaces,workloads \
 --namespace=flux | kubectl apply -f -
 ```
+
+Get the flux public key
+```
+fluxctl identity --k8s-fwd-ns flux
+```
+
+Then add it as a deploy key to github
