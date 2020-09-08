@@ -1,0 +1,125 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: local-mk-sleep-server
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: local-mk-sleep-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: local-mk-sleep-server
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: c3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: sleep-proxy
+  name: local-mk-sleep-proxy
+  namespace: c3
+spec:
+  ports:
+  - nodePort: 31001
+    port: 8081
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: sleep-proxy
+  type: NodePort
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: sleep-server
+  name: local-mk-sleep-server
+  namespace: c3
+spec:
+  ports:
+  - nodePort: 31000
+    port: 8080
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: sleep-server
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: sleep-proxy
+  name: local-mk-sleep-proxy
+  namespace: c3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sleep-proxy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sleep-proxy
+    spec:
+      containers:
+      - env:
+        - name: BEACON_HOST
+          value: local-mk-sleep-server
+        - name: BEACON_PORT
+          value: "8080"
+        image: host.minikube.internal:5000/sleep-proxy:test
+        imagePullPolicy: Always
+        name: sleep-proxy
+        ports:
+        - containerPort: 8081
+          name: http
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 250m
+            memory: 64Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: sleep-server
+  name: local-mk-sleep-server
+  namespace: c3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sleep-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sleep-server
+    spec:
+      containers:
+      - image: host.minikube.internal:5000/sleep-server:test
+        imagePullPolicy: Always
+        name: sleep-server
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 250m
+            memory: 64Mi
